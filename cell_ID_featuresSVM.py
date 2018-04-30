@@ -16,18 +16,12 @@ from sklearn.ensemble import RandomForestClassifier
 from scipy import stats
 from sklearn.decomposition import PCA
 
-
-def write_output(img_list,label_list,outpath):
-    with open(outpath,'wb') as outfile:
-        resultwriter = csv.writer(outfile,delimiter=',')
-        for img,label in zip(img_list,label_list):
-            resultwriter.writerow([img,label])
     
 
 def main():
     
     #Parameters 
-    featpath = '/Users/devinsullivanMBP/cell_ID_hackathon/training_small/'
+    featpath = '/Users/devinsullivanMBP/cell_ID_hackathon/training_features/'
     labelpath = '/Users/devinsullivanMBP/cell_ID_hackathon/training_upload.csv'
     validation_featpath = '/Users/devinsullivanMBP/cell_ID_hackathon/validation_features/' 
     outpath = '/Users/devinsullivanMBP/cell_ID_hackathon/validation_predictions.csv'
@@ -50,11 +44,11 @@ def main():
 
     
     #go through files 
+    print('reading feats')
     for filename in glob.iglob(featpath+'**/*features.csv', recursive=True):
        imgname = os.path.basename(os.path.dirname(filename))
        #get features and number of lines in the file
        currfeats = np.loadtxt(open(filename, "rb"), delimiter=",", skiprows=0)
-       print(np.shape(currfeats))
        if 'feats' in locals():
            feats = np.vstack((feats,currfeats))
        else:
@@ -66,11 +60,11 @@ def main():
        currnames = [cell_lines[imgname]]*num_lines[-1]
        label_list.extend(currnames)
        
-    
+    print('normailization and pca')
     #normalize features with zscore 
     mufeats = np.mean(feats,axis=0)
     stdfeats = np.std(feats,axis=0)
-    zfeats = stats.zscore(feats)
+    zfeats = (feats-mufeats)/stdfeats#stats.zscore(feats)
     #remove any columns that are always nan
     nan_cols = ~np.any(np.isnan(zfeats), axis=0)
     zfeats = zfeats[:,nan_cols]
@@ -103,38 +97,38 @@ def main():
     acc = pred==label_list
     print('training accuracy per-cell: ')
     print(np.sum(acc)/np.sum(num_lines))
+    print(pred)
 
-    
+    print(breakme)
     #read the validation set
     num_lines_validation = []
-    testfeats = np.empty((1,2233))
+    #testfeats = np.empty((1,2233))
     pred_list = []
     name_list_validation = []
-    for filename in glob.iglob(validation_featpath+'*features.csv', recursive=True):
-       imgname = os.path.basename(os.path.dirname(filename))
-       #get features and number of lines in the file
-       curr_testfeats = np.loadtxt(open(filename, "rb"), delimiter=",", skiprows=0)
-       #normalize with training z-score
-       ztestfeats = (curr_testfeats-mufeats)/stdfeats
-       #remove nan *then* inf (order is important)
-       ztestfeats = ztestfeats[:,nan_cols]
-       ztestfeats = ztestfeats[:,inf_cols]
-       ztest_pca5 = pca.transform(ztestfeats)
-       #predict validation labels 
-       cell_pred = features_classifier.predict(ztest_pca5)
-       print(cell_pred)
-       curr_pred = stats.mode(cell_pred)
-       print(np.shape(ztestfeats))
-       print(curr_pred[0])
-       #testfeats = np.vstack((testfeats,curr_testfeats))
-       currlines = np.shape(curr_testfeats)
-       num_lines_validation.append(currlines[0])
-       name_list_validation.append([imgname]*num_lines[-1])
+    with open(outpath, 'w') as outfile:
+        resultwriter = csv.writer(outfile,delimiter=',')
+        for filename in glob.iglob(validation_featpath+'*features.csv', recursive=True):
+           imgname = os.path.basename(filename)
+           imgname = imgname.split('_')[0]
+           print(imgname)
+           #get features and number of lines in the file
+           curr_testfeats = np.loadtxt(open(filename, "rb"), delimiter=",", skiprows=0)
+           #normalize with training z-score
+           ztestfeats = (curr_testfeats-mufeats)/stdfeats
+           #remove nan *then* inf (order is important)
+           ztestfeats = ztestfeats[:,nan_cols]
+           ztestfeats = ztestfeats[:,inf_cols]
+           ztest_pca5 = pca.transform(ztestfeats)
+           #predict validation labels 
+           cell_pred = features_classifier.predict(ztest_pca5)
+           print(cell_pred)
+           #grab the mode of the predictions as the overall prediction
+           curr_pred = stats.mode(cell_pred)
+           print(curr_pred[0][0])
+           
+           #write to file 
+           resultwriter.writerow([imgname,curr_pred[0][0]])
 
-       pred_list.append(curr_pred)
-       name_list.append(imgname)
-       #label_list.append(cell_lines[imgname])
-    num_lines_validation = np.asarray(num_lines_validation)
     
     
     
