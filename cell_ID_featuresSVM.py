@@ -72,12 +72,17 @@ def main():
     zfeats = zfeats[:,inf_cols]
     
     #perform Principal Components Analysis to reduce dimension
-    #randomly choosing 5 components for now. 
-    pca = PCA(n_components=5)
+    #choosing 2 components for now for visualization. 
+    pca = PCA(n_components=2)
     pca.fit(zfeats)
-    zf_pca5 = pca.transform(zfeats)
+    zf_pca2 = pca.transform(zfeats)
     
-    print(np.shape(zf_pca5))
+    ulabels = set(label_list)
+    print(ulabels)
+    #for curr_label in ulabels:
+        #label_list==curr_label
+    
+    print(np.shape(zf_pca2))
     
     #Try a classifier for literally only the number of lines (cells)
     num_lines = np.asarray(num_lines)
@@ -89,45 +94,51 @@ def main():
     #numline_classifier = svm.SVC()
     #train
     print(len(label_list))
-    features_classifier.fit(zf_pca5,label_list)
+    features_classifier.fit(zf_pca2,label_list)
     #numline_classifier.fit(num_lines,label_list)
-    #predict
+    #predict on training
     train_accuracy = np.zeros(num_imgs)
-    pred = features_classifier.predict(zf_pca5)
+    pred = features_classifier.predict(zf_pca2)
     acc = pred==label_list
     print('training accuracy per-cell: ')
     print(np.sum(acc)/np.sum(num_lines))
     print(pred)
 
-    print(breakme)
     #read the validation set
     num_lines_validation = []
     #testfeats = np.empty((1,2233))
     pred_list = []
     name_list_validation = []
+    #plt.pyplot.scatter(zf_pca2[:,0],zf_pca2[:,1],hold='on')
     with open(outpath, 'w') as outfile:
         resultwriter = csv.writer(outfile,delimiter=',')
-        for filename in glob.iglob(validation_featpath+'*features.csv', recursive=True):
+        test_files = glob.iglob(validation_featpath+'*features.csv', recursive=True)
+        print(test_files)
+        for filename in test_files:
            imgname = os.path.basename(filename)
-           imgname = imgname.split('_')[0]
+           imgname = imgname.split('_')
+           imgname = imgname[0]+'_'+imgname[1]
            print(imgname)
+           
            #get features and number of lines in the file
            curr_testfeats = np.loadtxt(open(filename, "rb"), delimiter=",", skiprows=0)
            #normalize with training z-score
+           print(np.shape(curr_testfeats))
            ztestfeats = (curr_testfeats-mufeats)/stdfeats
            #remove nan *then* inf (order is important)
            ztestfeats = ztestfeats[:,nan_cols]
            ztestfeats = ztestfeats[:,inf_cols]
-           ztest_pca5 = pca.transform(ztestfeats)
+           ztest_pca2 = pca.transform(ztestfeats)
+           print(np.shape(ztest_pca2))
+           #plt.pyplot.scatter(ztest_pca2[:,0],ztest_pca2[:,1],hold='on')
            #predict validation labels 
-           cell_pred = features_classifier.predict(ztest_pca5)
+           cell_pred = features_classifier.predict(ztest_pca2)
            print(cell_pred)
            #grab the mode of the predictions as the overall prediction
            curr_pred = stats.mode(cell_pred)
            print(curr_pred[0][0])
-           
            #write to file 
-           resultwriter.writerow([imgname,curr_pred[0][0]])
+           resultwriter.writerow([imgname,curr_pred])
 
     
     
