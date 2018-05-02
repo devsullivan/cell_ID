@@ -73,16 +73,16 @@ def main():
     
     #perform Principal Components Analysis to reduce dimension
     #choosing 2 components for now for visualization. 
-    pca = PCA(n_components=2)
-    pca.fit(zfeats)
-    zf_pca2 = pca.transform(zfeats)
+    #pca = PCA(n_components=4)
+    #pca.fit(zfeats)
+    #zf_pca2 = pca.transform(zfeats)
     
     ulabels = set(label_list)
     print(ulabels)
     #for curr_label in ulabels:
         #label_list==curr_label
     
-    print(np.shape(zf_pca2))
+    #print(np.shape(zf_pca2))
     
     #Try a classifier for literally only the number of lines (cells)
     num_lines = np.asarray(num_lines)
@@ -94,11 +94,11 @@ def main():
     #numline_classifier = svm.SVC()
     #train
     print(len(label_list))
-    features_classifier.fit(zf_pca2,label_list)
+    features_classifier.fit(zfeats,label_list)
     #numline_classifier.fit(num_lines,label_list)
     #predict on training
     train_accuracy = np.zeros(num_imgs)
-    pred = features_classifier.predict(zf_pca2)
+    pred = features_classifier.predict(zfeats)
     acc = pred==label_list
     print('training accuracy per-cell: ')
     print(np.sum(acc)/np.sum(num_lines))
@@ -112,6 +112,7 @@ def main():
     #plt.pyplot.scatter(zf_pca2[:,0],zf_pca2[:,1],hold='on')
     with open(outpath, 'w') as outfile:
         resultwriter = csv.writer(outfile,delimiter=',')
+        resultwriter.writerow(['filename','cell_line'])
         test_files = glob.iglob(validation_featpath+'*features.csv', recursive=True)
         print(test_files)
         for filename in test_files:
@@ -128,17 +129,17 @@ def main():
            #remove nan *then* inf (order is important)
            ztestfeats = ztestfeats[:,nan_cols]
            ztestfeats = ztestfeats[:,inf_cols]
-           ztest_pca2 = pca.transform(ztestfeats)
-           print(np.shape(ztest_pca2))
+           #ztest_pca2 = pca.transform(ztestfeats)
+           #print(np.shape(ztest_pca2))
            #plt.pyplot.scatter(ztest_pca2[:,0],ztest_pca2[:,1],hold='on')
            #predict validation labels 
-           cell_pred = features_classifier.predict(ztest_pca2)
+           cell_pred = features_classifier.predict(ztestfeats)
            print(cell_pred)
            #grab the mode of the predictions as the overall prediction
            curr_pred = stats.mode(cell_pred)
            print(curr_pred[0][0])
            #write to file 
-           resultwriter.writerow([imgname,curr_pred])
+           resultwriter.writerow([imgname,curr_pred[0][0]])
 
     
     
