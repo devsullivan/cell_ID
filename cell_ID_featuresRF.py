@@ -16,6 +16,7 @@ from sklearn.ensemble import RandomForestClassifier
 from scipy import stats
 from sklearn.decomposition import PCA
 
+
     
 
 def main():
@@ -24,7 +25,7 @@ def main():
     featpath = '/Users/devinsullivanMBP/cell_ID_hackathon/training_features/'
     labelpath = '/Users/devinsullivanMBP/cell_ID_hackathon/training_upload.csv'
     validation_featpath = '/Users/devinsullivanMBP/cell_ID_hackathon/validation_features/' 
-    outpath = '/Users/devinsullivanMBP/cell_ID_hackathon/validation_predictions.csv'
+    outpath = '/Users/devinsullivanMBP/cell_ID_hackathon/validation_predictions_nl.csv'
     
     cell_lines = {}
     with open(labelpath,'r') as labelfile:
@@ -40,6 +41,7 @@ def main():
     num_lines = []
     name_list = []
     label_list = []
+    label_img_list = []
     #feats = np.empty((1,2233))
 
     
@@ -59,6 +61,7 @@ def main():
        name_list.append([imgname]*num_lines[-1])
        currnames = [cell_lines[imgname]]*num_lines[-1]
        label_list.extend(currnames)
+       label_img_list.append(cell_lines[imgname])
        
     print('normailization and pca')
     #normalize features with zscore 
@@ -90,19 +93,25 @@ def main():
     num_imgs = len(num_lines) 
 
     #init svm
-    features_classifier = svm.SVC()
-    #numline_classifier = svm.SVC()
+    #features_classifier = svm.SVC()
+    #init random forest
+    features_classifier = RandomForestClassifier(random_state=0)
+    #init dumb cell number model
+    numline_classifier = svm.SVC()
     #train
     print(len(label_list))
     features_classifier.fit(zfeats,label_list)
-    #numline_classifier.fit(num_lines,label_list)
+    #numline_classifier.fit(num_lines,label_img_list)
     #predict on training
     train_accuracy = np.zeros(num_imgs)
     pred = features_classifier.predict(zfeats)
+    #pred_nl = numline_classifier.predict(num_lines)
     acc = pred==label_list
+    #acc_nl = pred_nl==label_img_list
     print('training accuracy per-cell: ')
     print(np.sum(acc)/np.sum(num_lines))
-    print(pred)
+    #print(np.sum(acc_nl)/np.sum(num_lines))
+    
 
     #read the validation set
     num_lines_validation = []
@@ -124,19 +133,22 @@ def main():
            #get features and number of lines in the file
            curr_testfeats = np.loadtxt(open(filename, "rb"), delimiter=",", skiprows=0)
            #normalize with training z-score
-           print(np.shape(curr_testfeats))
+           currlines = np.shape(curr_testfeats)
            ztestfeats = (curr_testfeats-mufeats)/stdfeats
            #remove nan *then* inf (order is important)
            ztestfeats = ztestfeats[:,nan_cols]
            ztestfeats = ztestfeats[:,inf_cols]
+           num_lines_validation.append(currlines[0])
            #ztest_pca2 = pca.transform(ztestfeats)
            #print(np.shape(ztest_pca2))
            #plt.pyplot.scatter(ztest_pca2[:,0],ztest_pca2[:,1],hold='on')
            #predict validation labels 
+           
            cell_pred = features_classifier.predict(ztestfeats)
            print(cell_pred)
            #grab the mode of the predictions as the overall prediction
            curr_pred = stats.mode(cell_pred)
+           #curr_pred = numline_classifier.predict(num_lines_validation[-1])
            print(curr_pred[0][0])
            #write to file 
            resultwriter.writerow([imgname,curr_pred[0][0]])
